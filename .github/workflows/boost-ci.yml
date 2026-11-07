@@ -14,10 +14,21 @@ on:
           - 4.0.0-boost-6.2.0
           - v3.4.2.6-boost-v6
           - released-master-2026-06-30
+      buildVariant:
+        description: 'Select flavor to build'
+        required: true
+        default: 'aapsclientDebug'
+        type: choice
+        options:
+          - fullDebug
+          - aapsclientDebug
+          - aapsclient2Debug
+          - aapsclient3Debug
+          - pumpcontrolDebug
 
 env:
   BOOST_REPO: tim2000s/Boost
-  BUILD_VARIANT: fullDebug
+  BUILD_VARIANT: ${{ github.event.inputs.buildVariant }}
 
 permissions:
   contents: read
@@ -69,15 +80,15 @@ jobs:
 
       - name: Rename APKs with version
         run: |
-          mv app/build/outputs/apk/full/debug/*.apk boost-${VERSION}.apk
-          mv wear/build/outputs/apk/full/debug/*.apk boost-wear-${VERSION}.apk
+          FLAVOR="${BUILD_VARIANT%Debug}"
+          echo "Flavor: $FLAVOR / Variant: $BUILD_VARIANT"
+          mv app/build/outputs/apk/${FLAVOR}/debug/*.apk boost-${FLAVOR}-${VERSION}.apk
+          mv wear/build/outputs/apk/${FLAVOR}/debug/*.apk boost-wear-${FLAVOR}-${VERSION}.apk
           ls -lh boost-*.apk
 
       - name: Upload APKs as GitHub Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: boost-apks-${{ github.event.inputs.tagName }}
-          path: |
-            boost-${{ env.VERSION }}.apk
-            boost-wear-${{ env.VERSION }}.apk
+          name: boost-${{ github.event.inputs.buildVariant }}-${{ github.event.inputs.tagName }}
+          path: boost-*.apk
           retention-days: 30
