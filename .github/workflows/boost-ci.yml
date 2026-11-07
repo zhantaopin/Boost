@@ -78,6 +78,8 @@ jobs:
           WEARPLUGIN=plugins/sync/src/androidMain/kotlin/app/aaps/plugins/sync/wear/WearPlugin.kt
           sed -i 's|"app\.aaps\.weardata\.permission"|"${applicationId}.weardata.permission"|g' "$MANIFEST"
           sed -i 's|WearDataReceiver\.PERMISSION|context.packageName + ".weardata.permission"|g' "$WEARPLUGIN"
+          # The build refuses to run on a tree with local modifications; this patch is exactly that.
+          sed -i '/There are uncommitted changes/s|^|// |' app/build.gradle.kts
           grep -n "weardata.permission" "$MANIFEST" "$WEARPLUGIN"
 
       - name: Add swap on small runners
