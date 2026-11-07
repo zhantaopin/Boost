@@ -25,6 +25,11 @@ on:
           - aapsclient2Debug
           - aapsclient3Debug
           - pumpcontrolDebug
+      isolateWearPermission:
+        description: 'Scope app.aaps.weardata.permission to this applicationId (lets the APK install next to a differently signed AAPS)'
+        required: true
+        default: false
+        type: boolean
 
 env:
   BOOST_REPO: tim2000s/Boost
@@ -60,6 +65,20 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
+      # AAPS hardcodes app.aaps.weardata.permission so that every flavor shares one signature
+      # level permission, which only works when every APK carries the same certificate. With a
+      # differently signed AAPS already on the phone, Android answers -112 and refuses the
+      # install. Scoping the name to this applicationId gives the APK a permission of its own;
+      # the master can then no longer receive wear data from it, everything else is unaffected.
+      - name: Scope wear permission to this applicationId
+        if: ${{ github.event.inputs.isolateWearPermission == 'true' }}
+        run: |
+          MANIFEST=plugins/sync/src/androidMain/AndroidManifest.xml
+          WEARPLUGIN=plugins/sync/src/androidMain/kotlin/app/aaps/plugins/sync/wear/WearPlugin.kt
+          sed -i 's|"app\.aaps\.weardata\.permission"|"${applicationId}.weardata.permission"|g' "$MANIFEST"
+          sed -i 's|WearDataReceiver\.PERMISSION|context.packageName + ".weardata.permission"|g' "$WEARPLUGIN"
+          grep -n "weardata.permission" "$MANIFEST" "$WEARPLUGIN"
 
       - name: Add swap on small runners
         run: |
