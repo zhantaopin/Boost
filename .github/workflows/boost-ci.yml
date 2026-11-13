@@ -40,6 +40,8 @@ on:
   push:
     tags:
       - 'boost-build-*'
+    branches:
+      - 'boost-build-*'
 
 env:
   BOOST_REPO: tim2000s/Boost
