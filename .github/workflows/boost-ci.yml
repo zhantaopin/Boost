@@ -17,7 +17,7 @@ on:
       buildVariant:
         description: 'Select flavor to build'
         required: true
-        default: 'fullDebug'
+        default: 'aapsclientDebug'
         type: choice
         options:
           - fullDebug
@@ -33,7 +33,6 @@ on:
 
 env:
   BOOST_REPO: tim2000s/Boost
-  TAG_NAME: ${{ github.event.inputs.tagName }}
   BUILD_VARIANT: ${{ github.event.inputs.buildVariant }}
 
 permissions:
@@ -48,12 +47,14 @@ jobs:
         uses: actions/checkout@v5
         with:
           repository: ${{ env.BOOST_REPO }}
-          ref: refs/tags/${{ env.TAG_NAME }}
+          ref: refs/tags/${{ github.event.inputs.tagName }}
           fetch-depth: 1
           persist-credentials: false
 
       - name: Set VERSION
-        run: echo "VERSION=$TAG_NAME" >> "$GITHUB_ENV"
+        env:
+          TAG: ${{ github.event.inputs.tagName }}
+        run: echo "VERSION=$TAG" >> "$GITHUB_ENV"
 
       - name: Set up JDK
         uses: actions/setup-java@v5
@@ -80,19 +81,6 @@ jobs:
           # The build refuses to run on a tree with local modifications; this patch is exactly that.
           sed -i '/There are uncommitted changes/s|^|// |' app/build.gradle.kts
           grep -n "weardata.permission" "$MANIFEST" "$WEARPLUGIN"
-
-      # Boost: the master build announces nothing. This fork is kept at a fixed version on purpose,
-      # so "version X is available" only ever pointed at an upstream AAPS that cannot be installed
-      # over it - and the same check tinted the version label on the overview once it had written an
-      # expiry date. The clients keep the check: they are the ones that follow the master.
-      - name: Disable version check
-        if: ${{ github.event.inputs.buildVariant == 'fullDebug' }}
-        run: |
-          FILE=plugins/constraints/src/androidMain/kotlin/app/aaps/plugins/constraints/versionChecker/VersionCheckerUtilsImpl.kt
-          perl -0pi -e 's/override fun triggerCheckVersion\(\) \{\n/override fun triggerCheckVersion() {\n        if (!config().AAPSCLIENT) return \/\/ versionCheckDisabledByBuild\n/' "$FILE"
-          grep -n "versionCheckDisabledByBuild" "$FILE"
-          # The build refuses to run on a tree with local modifications; this patch is exactly that.
-          sed -i '/There are uncommitted changes/s|^|// /' app/build.gradle.kts
 
       - name: Add swap on small runners
         run: |
@@ -159,6 +147,6 @@ jobs:
       - name: Upload APKs as GitHub Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: boost-${{ env.BUILD_VARIANT }}-${{ env.TAG_NAME }}
+          name: boost-${{ github.event.inputs.buildVariant }}-${{ github.event.inputs.tagName }}
           path: boost-*.apk
           retention-days: 30
