@@ -17,7 +17,7 @@ on:
       buildVariant:
         description: 'Select flavor to build'
         required: true
-        default: 'aapsclientDebug'
+        default: 'fullDebug'
         type: choice
         options:
           - fullDebug
@@ -30,24 +30,11 @@ on:
         required: true
         default: false
         type: boolean
-      disableVersionCheck:
-        description: 'Master only: stop announcing upstream versions and expiry dates'
-        required: true
-        default: true
-        type: boolean
-  # The dispatch API is not reachable from every integration that pushes here, so a tag does the
-  # same job: `git push origin <tag>` builds the master with the same defaults as the form.
-  push:
-    tags:
-      - 'boost-build-*'
-    branches:
-      - 'boost-build-*'
 
 env:
   BOOST_REPO: tim2000s/Boost
-  TAG_NAME: ${{ github.event.inputs.tagName || '4.0.0-boost-6.3.0' }}
-  BUILD_VARIANT: ${{ github.event.inputs.buildVariant || 'fullDebug' }}
-  DISABLE_VERSION_CHECK: ${{ github.event.inputs.disableVersionCheck || 'true' }}
+  TAG_NAME: ${{ github.event.inputs.tagName }}
+  BUILD_VARIANT: ${{ github.event.inputs.buildVariant }}
 
 permissions:
   contents: read
@@ -99,7 +86,7 @@ jobs:
       # over it - and the same check tinted the version label on the overview once it had written an
       # expiry date. The clients keep the check: they are the ones that follow the master.
       - name: Disable version check
-        if: ${{ env.DISABLE_VERSION_CHECK == 'true' && env.BUILD_VARIANT == 'fullDebug' }}
+        if: ${{ github.event.inputs.buildVariant == 'fullDebug' }}
         run: |
           FILE=plugins/constraints/src/androidMain/kotlin/app/aaps/plugins/constraints/versionChecker/VersionCheckerUtilsImpl.kt
           perl -0pi -e 's/override fun triggerCheckVersion\(\) \{\n/override fun triggerCheckVersion() {\n        if (!config().AAPSCLIENT) return \/\/ versionCheckDisabledByBuild\n/' "$FILE"
