@@ -30,6 +30,11 @@ on:
         required: true
         default: false
         type: boolean
+      disableVersionCheck:
+        description: 'Master only: stop announcing upstream versions and expiry dates'
+        required: true
+        default: true
+        type: boolean
 
 env:
   BOOST_REPO: tim2000s/Boost
@@ -81,6 +86,19 @@ jobs:
           # The build refuses to run on a tree with local modifications; this patch is exactly that.
           sed -i '/There are uncommitted changes/s|^|// |' app/build.gradle.kts
           grep -n "weardata.permission" "$MANIFEST" "$WEARPLUGIN"
+
+      # Boost: the master build announces nothing. This fork is kept at a fixed version on purpose,
+      # so "version X is available" only ever pointed at an upstream AAPS that cannot be installed
+      # over it - and the same check tinted the version label on the overview once it had written an
+      # expiry date. The clients keep the check: they are the ones that follow the master.
+      - name: Disable version check
+        if: ${{ github.event.inputs.disableVersionCheck == 'true' && github.event.inputs.buildVariant == 'fullDebug' }}
+        run: |
+          FILE=plugins/constraints/src/androidMain/kotlin/app/aaps/plugins/constraints/versionChecker/VersionCheckerUtilsImpl.kt
+          perl -0pi -e 's/override fun triggerCheckVersion\(\) \{\n/override fun triggerCheckVersion() {\n        if (!config().AAPSCLIENT) return \/\/ versionCheckDisabledByBuild\n/' "$FILE"
+          grep -n "versionCheckDisabledByBuild" "$FILE"
+          # The build refuses to run on a tree with local modifications; this patch is exactly that.
+          sed -i '/There are uncommitted changes/s|^|// /' app/build.gradle.kts
 
       - name: Add swap on small runners
         run: |
